@@ -11,9 +11,9 @@
     <!-- For Safari for iOS: -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.0.0/jquery.min.js"></script>
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/3.0.0/jquery.min.js"></script>
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/material-design-iconic-font/2.2.0/css/material-design-iconic-font.min.css">
-    <link href="//fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+    <link href="http://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
     <link rel="manifest" href="manifest.json">
     <!-- For Chrome for Android: -->
     <link rel="icon" sizes="192x192" href="images/touch/launcher-icon-4x.png">
@@ -27,8 +27,48 @@
     <link rel="apple-touch-icon-precomposed" sizes="96x96" href="images/touch/launcher-icon-2x.png">
     <link rel="apple-touch-icon-precomposed" sizes="72x72" href="images/touch/launcher-icon-1-5x.png">
     <link rel="apple-touch-icon-precomposed" sizes="48x48" href="images/touch/launcher-icon-1x.png">
+    <style >
+        body {
+            margin: 0;
+            padding: 10px 20px 20px;
+            font-family: Arial;
+            font-size: 16px;
+        }
+        #map-container {
+            padding: 6px;
+            border-width: 1px;
+            border-style: solid;
+            border-color: #ccc #ccc #999 #ccc;
+            -webkit-box-shadow: rgba(64, 64, 64, 0.5) 0 2px 5px;
+            -moz-box-shadow: rgba(64, 64, 64, 0.5) 0 2px 5px;
+            box-shadow: rgba(64, 64, 64, 0.1) 0 2px 5px;
+            width: 600px;
+        }
+        #map {
+            width: 600px;
+            height: 400px;
+        }
+    </style>
+    <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key={YOUR-KEY}&sensor=false"></script>
+
+
+    <script type="text/javascript" src="src/markerclusterer.js"></script>
+
+    <script>
+        var _gaq = _gaq || [];
+        _gaq.push(['_setAccount', 'UA-12846745-20']);
+        _gaq.push(['_trackPageview']);
+
+        (function() {
+            var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+            ga.src = ('https:' === document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+        })();
+    </script>
 </head>
-<body style="font-family: 'Roboto', sans-serif; font-size: xx-large; text-align: center">
+<body>
+<h3>A simple example of MarkerClusterer (100 markers)</h3>
+<div id="map-container"><div id="map"></div></div>
 <span id="refreshButton" class="zmdi-hc-stack zmdi-hc-lg" style="position: fixed; right: 0; top: 0;">
     <i id="refreshIcon" class="zmdi zmdi-refresh zmdi-hc-stack-1x" style="font-size: 40%"></i>
     <i class="zmdi zmdi-circle-o zmdi-hc-stack-1x" style="font-size: 65%"></i>
@@ -50,23 +90,122 @@
                                     + position.coords.latitude +
                                     '&lon='
                                     + position.coords.longitude +
-                                    '&onlyAvailable=true&onlyFirstResult=true',
+                                    '&onlyAvailable=true&onlyFirstResult=false',
                                 })
-                                .done(function (data) {
-                                    content.html(
-                                            'Ho trovato ' + data.bikes[0].count + ' ' + data.bikes[0].name.toLowerCase() +
-                                            '<br /> e ' + data.bikes[1].count + ' ' + data.bikes[1].name.toLowerCase() +
-                                            '<br />a <a href="https://maps.google.com/?q=' + data.latitude +
-                                            ',' + data.longitude + '" target="_blank" title="' + data.name + '">' +
-                                            Math.round(data.distance) + 'm da te</a>'
-                                    );
+                                  .done(function (data) {
+                                      console.log(data);
+                                      for (var i = 0; i < data.length; i++) {
+                                          //content.append('<div>' + JSON.stringify(data[i])+'</div>');
 
-                                    content.append('<br><img src="https://maps.googleapis.com/maps/api/staticmap?' +
-                                            'autoscale=true&size=640x640&maptype=roadmap&format=png&scale=2' +
-                                            '&markers=size:small%7Ccolor:green%7C' + data.latitude + ',' + data.longitude +
-                                            '&markers=size:small%7Ccolor:red%7C' + position.coords.latitude + ',+' + position.coords.longitude +
-                                            '&key=AIzaSyDUTayO2Pidi3AZlyGa4edL7SHJbryTvqA' +
-                                            '" style="width: 320px; margin-top: 20px">');
+                                          content.append('<div>'
+                                                          + i + " -"
+                                                  + JSON.stringify(data[i].name)+","
+                                                  + JSON.stringify(data[i].bikes[0].name)+ ":"
+                                                  + JSON.stringify(data[i].bikes[0].count) + ","
+
+                                                  + JSON.stringify(data[i].bikes[1].name)+":"
+                                                  + JSON.stringify(data[i].bikes[1].count) + ","
+
+                                                  + "Liberi:"
+                                                  + JSON.stringify(data[i].emptyslotcount)
+
+                                                  + "su:"
+                                                  + JSON.stringify(data[i].slotsnumber)
+
+
+                                                  +'</div>');
+                                      }
+
+
+                                      function initialize(data) {
+
+                                          var center = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+
+                                          var map = new google.maps.Map(document.getElementById('map'), {
+                                              zoom: 14,
+                                              center: center,
+                                              mapTypeId: google.maps.MapTypeId.ROADMAP
+                                          });
+
+                                          var markers = [];
+                                          /*for (var i = 0; i < 100; i++) {
+                                              var dataPhoto = data.photos[i];
+                                              var latLng = new google.maps.LatLng(dataPhoto.latitude,
+                                                      dataPhoto.longitude);
+                                              var marker = new google.maps.Marker({
+                                                  position: latLng
+                                              });
+                                              markers.push(marker);
+                                          }*/
+
+                                          for (var i = 0; i < data.length; i++) {
+                                              //content.append('<div>' + JSON.stringify(data[i])+'</div>');
+
+
+
+                                              var bikecount= data[i].bikes[0].count + data[i].bikes[1].count;
+
+
+                                              var out = bikecount / data[i].slotsnumber;
+
+                                              console.log(bikecount + "/"+ data[i].slotsnumber +"="+out);
+
+                                              var curricon = "";
+
+                                              switch (true) {
+                                                  case (0 <= out && out < 0.25):
+                                                      curricon = 'images/ICONS_m_02.png';
+                                                      curricon = 'images/icons2_01.png';
+                                                      curricon = 'images/icons2_09.png';
+                                                      curricon = 'images/icons2_15.png';
+                                                      curricon = 'images/icons2_21.png';
+                                                      break;
+                                                  case (0.25 <= out && out < 0.50):
+                                                      curricon = 'images/ICONS_m_03.png';
+                                                      curricon = 'images/icons2_10.png';
+                                                      curricon = 'images/icons2_16.png';
+                                                      curricon = 'images/icons2_22.png';
+                                                      break;
+                                                  case (0.50 <= out && out < 0.75):
+                                                      curricon = 'images/ICONS_m_04.png';
+                                                      curricon = 'images/icons2_11.png';
+                                                      curricon = 'images/icons2_17.png';
+                                                      curricon = 'images/icons2_23.png';
+
+                                                      break;
+                                                  case (0.75 <= out && out <= 1):
+                                                      curricon = 'images/ICONS_m_05.png';
+                                                      curricon = 'images/icons2_12.png';
+                                                      curricon = 'images/icons2_18.png';
+                                                      curricon = 'images/icons2_24.png';
+
+                                                      break;
+                                              }
+                                              console.log(curricon);
+                                              var latLng = new google.maps.LatLng(data[i].latitude,
+                                                      data[i].longitude);
+
+                                              var marker = new google.maps.Marker({
+                                                  position: latLng,
+                                                  icon: curricon
+                                              });
+                                              
+                                              markers.push(marker);
+                                          }
+
+
+                                           latLng = new google.maps.LatLng(position.coords.latitude,
+                                                  position.coords.longitude);
+
+                                           marker = new google.maps.Marker({
+                                              position: latLng
+                                          });
+                                          markers.push(marker);
+
+                                          var markerCluster = new MarkerClusterer(map, markers, {gridSize: 50,imagePath: 'images/m'});
+                                      }
+
+                                      google.maps.event.addDomListener(window, 'load', initialize(data));
 
                                     refreshIcon.removeClass('zmdi-hc-spin');
                                 })
